@@ -4,7 +4,8 @@ This solution demonstrates a simple Node.js app built with minimum version 7.4.0
 ##Installation
 This solution requires an SSL server.  Certificates are not provided in the repository, you will need to generate them.  In the root of the project:
 
-```openssl genrsa -out key.pem
+```
+openssl genrsa -out key.pem
 openssl req -new -key key.pem -out csr.pem
 openssl x509 -req -days 9999 -in csr.pem -signkey key.pem -out cert.pem
 rm csr.pem

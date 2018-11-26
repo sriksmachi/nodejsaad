@@ -8,7 +8,7 @@ exports.creds = {
     identityMetadata: 'https://login.microsoftonline.com/governanceframework.onmicrosoft.com/.well-known/openid-configuration',
     validateIssuer: true, // if you have validation on, you cannot have users from multiple tenants sign in to your server
     passReqToCallback: false,
-    responseType: 'id_token', // for login only flows use id_token. For accessing resources use `id_token code
+    responseType: 'id_token code', // for login only flows use id_token. For accessing resources use `id_token code
     responseMode: 'form_post', // For login only flows we should have token passed back to us in a POST
     loggingLevel: 'info', // valid are 'info', 'warn', 'error'. Error always goes to stderr in Unix.
     scope: ['email', 'profile'] // additional scopes you may wish to pass

@@ -20,6 +20,10 @@ var index = require('./routes/index');
 // array to hold logged in users
 var users = [];
 
+const appInsights = require("applicationinsights");
+appInsights.setup("c254f393-85dc-47c3-ab50-93e991e2910a").start();
+let client = appInsights.defaultClient;
+
 //   To support persistent login sessions, Passport needs to be able to
 //   serialize users into and deserialize users out of the session.  Typically,
 //   this will be as simple as storing the user ID when serializing, and finding
@@ -43,7 +47,7 @@ var findByOID = function (oid, fn) {
       return fn(null, user);
     }
   }
-  console.log("Did not find user by OID: " + oid);
+  trackTrace("Did not find user by OID: " + oid);
   return fn(null, null);
 };
 
@@ -53,21 +57,21 @@ var findByOID = function (oid, fn) {
 //   credentials (in this case, an OpenID identifier), and invoke a callback
 //   with a user object.
 passport.use(new OIDCStrategy({
-  callbackURL: config.creds.returnURL,
-  redirectUrl: config.creds.redirectUrl,
-  realm: config.creds.realm,
-  clientID: config.creds.clientID,
-  clientSecret: config.creds.clientSecret,
-  oidcIssuer: config.creds.issuer,
-  identityMetadata: config.creds.identityMetadata,
-  skipUserProfile: config.creds.skipUserProfile,
-  responseType: config.creds.responseType,
-  responseMode: config.creds.responseMode,
-  scope: config.creds.scope
-},
+    callbackURL: config.creds.returnURL,
+    redirectUrl: config.creds.redirectUrl,
+    realm: config.creds.realm,
+    clientID: config.creds.clientID,
+    clientSecret: config.creds.clientSecret,
+    oidcIssuer: config.creds.issuer,
+    identityMetadata: config.creds.identityMetadata,
+    skipUserProfile: config.creds.skipUserProfile,
+    responseType: config.creds.responseType,
+    responseMode: config.creds.responseMode,
+    scope: config.creds.scope
+  },
   function (iss, sub, profile, accessToken, refreshToken, done) {
     if (!profile.oid) {
-      console.log(util.inspect(profile));
+      trackTrace(util.inspect(profile));
       return done(new Error("No OID found"), null);
     }
     // asynchronous verification, for effect...
@@ -101,7 +105,9 @@ app.set('view engine', 'jade');
 app.use(logger('dev'));
 app.use(methodOverride());
 app.use(bodyParser.json());
-app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.urlencoded({
+  extended: true
+}));
 app.use(cookieParser());
 app.use(session({
   secret: 'keyboard cat',
@@ -125,9 +131,11 @@ app.use(express.static(path.join(__dirname, 'public')));
 //   provider redirects the user back to this application at
 //   /auth/openid/return.
 app.get('/auth/openid',
-  passport.authenticate('azuread-openidconnect', { failureRedirect: '/login' }),
+  passport.authenticate('azuread-openidconnect', {
+    failureRedirect: '/login'
+  }),
   function (req, res) {
-    console.log('Authentication was called in the Sample');
+    trackTrace('Authentication was called in the Sample');
     res.redirect('/');
   });
 
@@ -137,9 +145,11 @@ app.get('/auth/openid',
 //   sign-in page. Otherwise, the primary route function is called,
 //   which, in this example, redirects the user to the home page.
 app.get('/auth/openid/return',
-  passport.authenticate('azuread-openidconnect', { failureRedirect: '/login' }),
+  passport.authenticate('azuread-openidconnect', {
+    failureRedirect: '/login'
+  }),
   function (req, res) {
-    console.log('We received a return from AzureAD.');
+    trackTrace('We received a return from AzureAD.');
     res.redirect('/');
   });
 
@@ -149,9 +159,11 @@ app.get('/auth/openid/return',
 //   sign-in page. Otherwise, the primary route function is called,
 //   which, in this example, redirects the user to the home page.
 app.post('/auth/openid/return',
-  passport.authenticate('azuread-openidconnect', { failureRedirect: '/login' }),
+  passport.authenticate('azuread-openidconnect', {
+    failureRedirect: '/login'
+  }),
   function (req, res) {
-    console.log('We received a return from AzureAD.');
+    trackTrace('We received a return from AzureAD.');
     res.redirect('/');
   });
 
@@ -162,13 +174,17 @@ app.post('/auth/openid/return',
 app.get('/', index);
 
 app.get('/account', ensureAuthenticated, function (req, res) {
-  res.render('account', { user: req.user });
+  res.render('account', {
+    user: req.user
+  });
 });
 
 app.get('/login',
-  passport.authenticate('azuread-openidconnect', { failureRedirect: '/login' }),
+  passport.authenticate('azuread-openidconnect', {
+    failureRedirect: '/login'
+  }),
   function (req, res) {
-    console.log('Login was called in the Sample');
+    trackTrace('Login was called in the Sample');
     res.redirect('/');
   });
 
@@ -191,6 +207,8 @@ app.use(function (err, req, res, next) {
   res.locals.message = err.message;
   res.locals.error = req.app.get('env') === 'development' ? err : {};
 
+  client.trackException({exception: new Error(err.message)});
+
   // render the error page
   res.status(err.status || 500);
   res.render('error');
@@ -204,7 +222,9 @@ app.use(function (err, req, res, next) {
 //   the request proceeds. Otherwise, the user is redirected to the
 //   sign-in page.
 function ensureAuthenticated(req, res, next) {
-  if (req.isAuthenticated()) { return next(); }
+  if (req.isAuthenticated()) {
+    return next();
+  }
   res.redirect('/login')
 }
 
@@ -213,6 +233,11 @@ var options = {
   key: fs.readFileSync('./key.pem'),
   cert: fs.readFileSync('./cert.pem')
 };
+
+function trackTrace(message){
+  client.trackTrace({message: message});
+  console.log(message);
+}
 
 //http.createServer(app).listen(8080);
 https.createServer(options, app).listen(443);
